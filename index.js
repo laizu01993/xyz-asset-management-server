@@ -33,10 +33,31 @@ async function run() {
 
     // create user
     app.post('/users', async (req, res) => {
-        const user = req.body;
-        const result = await userCollection.insertOne(user);
-        res.send(result);
+      const user = req.body;
+      const result = await userCollection.insertOne(user);
+      res.send(result);
     });
+
+    // Get all users
+    app.get('/users', async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+
+    // get user by email
+    app.get('/users/:email', async (req, res) => {
+      const email = req.params.email;
+
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+
+      if (!user) {
+        return res.status(404).send({ message: "User not found" });
+      }
+
+      res.send(user);
+    });
+
 
 
     // Send a ping to confirm a successful connection
@@ -52,9 +73,9 @@ run().catch(console.dir);
 
 
 app.get('/', (req, res) => {
-    res.send('HR Manager is sitting')
+  res.send('HR Manager is sitting')
 })
 
 app.listen(port, () => {
-    console.log(`HR Manager is sitting on port ${port}`)
+  console.log(`HR Manager is sitting on port ${port}`)
 })
