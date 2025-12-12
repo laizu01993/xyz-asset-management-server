@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const port = process.env.PORT || 5000;
 
@@ -29,6 +30,35 @@ async function run() {
     await client.connect();
 
     const userCollection = client.db("xyzDB").collection("users");
+    const assetCollection = client.db("xyzDB").collection("assets");
+
+
+    // JWT related API
+    app.post('/jwt', async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: '7d'
+      })
+      res.send({ token })
+    })
+
+    // middleware
+    const verifyToken = (req, res, next) =>{
+      
+    }
+
+    // use verifyHR after verifyToken
+    const verifyHR = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const userData = user?.role === 'hr';
+      if (!userData) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      next();
+    }
+
 
 
     // create user
@@ -56,6 +86,19 @@ async function run() {
       }
 
       res.send(user);
+    });
+
+    // create assets
+    app.post('/assets', verifyHR, async (req, res) => {
+      const asset = req.body;
+      const result = await assetCollection.insertOne(asset);
+      res.send(result);
+    });
+
+    // Get all assets
+    app.get('/assets', async (req, res) => {
+      const result = await assetCollection.find().toArray();
+      res.send(result);
     });
 
 
