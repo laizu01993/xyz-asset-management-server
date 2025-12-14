@@ -44,7 +44,18 @@ async function run() {
 
     // middleware
     const verifyToken = (req, res, next) =>{
-      
+      console.log('inside verify token', req.headers.authorization)
+      if (!req.headers.authorization) {
+        return res.status(401).send({message: 'forbidden access'});
+      }
+      const token = req.headers.Authorization.split(' ')[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (error, decoded) => {
+        if(error){
+          return res.status(401).send({message: 'forbidden access'})
+        }
+        req.decoded = decoded;
+        next();
+      })
     }
 
     // use verifyHR after verifyToken
@@ -89,7 +100,7 @@ async function run() {
     });
 
     // create assets
-    app.post('/assets', verifyHR, async (req, res) => {
+    app.post('/assets', verifyToken, verifyHR, async (req, res) => {
       const asset = req.body;
       const result = await assetCollection.insertOne(asset);
       res.send(result);
