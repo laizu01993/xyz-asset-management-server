@@ -43,15 +43,15 @@ async function run() {
     })
 
     // middleware
-    const verifyToken = (req, res, next) =>{
+    const verifyToken = (req, res, next) => {
       console.log('inside verify token', req.headers.authorization)
       if (!req.headers.authorization) {
-        return res.status(401).send({message: 'forbidden access'});
+        return res.status(401).send({ message: 'forbidden access' });
       }
-      const token = req.headers.Authorization.split(' ')[1];
+      const token = req.headers.authorization.split(' ')[1];
       jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (error, decoded) => {
-        if(error){
-          return res.status(401).send({message: 'forbidden access'})
+        if (error) {
+          return res.status(401).send({ message: 'forbidden access' })
         }
         req.decoded = decoded;
         next();
@@ -99,6 +99,8 @@ async function run() {
       res.send(user);
     });
 
+    // Assets related API--->
+
     // create assets
     app.post('/assets', verifyToken, verifyHR, async (req, res) => {
       const asset = req.body;
@@ -106,9 +108,40 @@ async function run() {
       res.send(result);
     });
 
-    // Get all assets
-    app.get('/assets', async (req, res) => {
-      const result = await assetCollection.find().toArray();
+    // Get all assets with search, filter and sort (HR only)
+    app.get('/assets', verifyToken, verifyHR, async (req, res) => {
+
+      const { search, status, type, sort } = req.query;
+
+      let query = {};
+
+      // search by name
+      if (search) {
+        query.name = {
+          $regex: search,
+          $options: 'i'
+        };
+      }
+      // filter by availability
+      if (status) {
+        query.availability = status;
+      }
+
+      // filter by asset type
+      if (type) {
+        query.type = type;
+      }
+      let cursor = assetCollection.find(query);
+
+      // sort by quantity
+      if (sort === 'asc') {
+        cursor = cursor.sort({ quantity: 1 });
+      }
+      if (sort === 'dsc') {
+        cursor = cursor.sort({ quantity: -1 });
+      }
+
+      const result = await cursor.toArray();
       res.send(result);
     });
 
