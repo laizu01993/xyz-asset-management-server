@@ -73,11 +73,30 @@ async function run() {
 
 
     // create user
+
     app.post('/users', async (req, res) => {
       const user = req.body;
-      const result = await userCollection.insertOne(user);
+
+      const filter = { email: user.email };
+      const updateDoc = {
+        $set: {
+          name: user.name,
+          email: user.email,
+          role: user.role || "employee"
+        }
+      };
+
+      const options = { upsert: true };
+
+      const result = await userCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+
       res.send(result);
     });
+
 
     // Get all users
     app.get('/users', async (req, res) => {
