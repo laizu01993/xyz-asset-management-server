@@ -12,7 +12,7 @@ app.use(express.json());
 
 
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.tye2x.mongodb.net/?appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -164,6 +164,32 @@ async function run() {
       res.send(result);
     });
 
+    // Read menu item by specific id
+    app.get('/assets/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await assetCollection.findOne(query);
+      res.send(result);
+    })
+
+
+    // Update asset
+    app.patch('/assets/:id', async (req, res) => {
+      const asset = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+
+      const updatedDoc = {
+        $set: {
+          name: asset.name,
+          type: asset.type,
+          quantity: asset.quantity,
+          availability: asset.quantity > 0 ? "available" : "out of stock"
+        }
+      };
+      const result = await assetCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    })
 
 
     // Send a ping to confirm a successful connection
