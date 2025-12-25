@@ -31,6 +31,7 @@ async function run() {
 
     const userCollection = client.db("xyzDB").collection("users");
     const assetCollection = client.db("xyzDB").collection("assets");
+    const requestCollection = client.db("xyzDB").collection("requests");
 
 
     // JWT related API
@@ -71,9 +72,9 @@ async function run() {
     }
 
 
+    // Users Related APIs--->
 
     // create user
-
     app.post('/users', async (req, res) => {
       const user = req.body;
 
@@ -196,6 +197,19 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
       const result = await assetCollection.deleteOne(query);
+      res.send(result);
+    })
+
+    // GET /hr/pending-requests
+    app.get('/hr/pending-requests', verifyToken, verifyHR, async  (req, res) => {
+      const query = {status: 'pending'};
+
+      const result = await requestCollection
+      .find(query)
+      .sort({createdAt: -1})
+      .limit(5)
+      .toArray()
+
       res.send(result);
     })
 
