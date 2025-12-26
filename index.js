@@ -200,15 +200,32 @@ async function run() {
       res.send(result);
     })
 
+    // Create asset request (Employee)
+    app.post('/requests', verifyToken, async (req, res) => {
+      const request = req.body;
+      const newRequest = {
+        assetId: request.assetId,
+        assetName: request.assetName,
+        type: request.type,
+        employeeName: request.employeeName,
+        employeeEmail: request.employeeEmail,
+        note: request.note || "",
+        status: "pending",
+        createdAt: new Date()
+      };
+      const result = await requestCollection.insertOne(newRequest);
+      res.send(result);
+    })
+
     // GET /hr/pending-requests
-    app.get('/hr/pending-requests', verifyToken, verifyHR, async  (req, res) => {
-      const query = {status: 'pending'};
+    app.get('/hr/pending-requests', verifyToken, verifyHR, async (req, res) => {
+      const query = { status: 'pending' };
 
       const result = await requestCollection
-      .find(query)
-      .sort({createdAt: -1})
-      .limit(5)
-      .toArray()
+        .find(query)
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .toArray()
 
       res.send(result);
     })
