@@ -151,7 +151,6 @@ async function run() {
       if (type) {
         query.type = type;
       }
-      let cursor = assetCollection.find(query);
 
       // sort by quantity
       if (sort === 'asc') {
@@ -161,7 +160,7 @@ async function run() {
         cursor = cursor.sort({ quantity: -1 });
       }
 
-      const result = await cursor.toArray();
+      const result = await assetCollection.find(query).toArray();
       res.send(result);
     });
 
@@ -175,7 +174,7 @@ async function run() {
 
 
     // Update asset
-    app.patch('/assets/:id', async (req, res) => {
+    app.patch('/assets/:id', verifyToken, verifyHR, async (req, res) => {
       const asset = req.body;
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
@@ -199,6 +198,29 @@ async function run() {
       const result = await assetCollection.deleteOne(query);
       res.send(result);
     })
+
+    // Employee: get assets with search & filter
+    app.get('/employee/assets', verifyToken, async (req, res) => {
+      const { search, status, type } = req.query;
+
+      let query = {};
+
+      if (search) {
+        query.name = { $regex: search, $options: 'i' };
+      }
+
+      if (status) {
+        query.availability = status;
+      }
+
+      if (type) {
+        query.type = type;
+      }
+
+      const result = await assetCollection.find(query).toArray();
+      res.send(result);
+    });
+
 
     // Create asset request (Employee)
     app.post('/requests', verifyToken, async (req, res) => {
