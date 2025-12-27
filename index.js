@@ -270,6 +270,14 @@ async function run() {
       res.send(result);
     })
 
+    // Get limited stock assets (quantity < 10)
+    app.get('/assets/limited-stock', verifyToken, verifyHR, async (req, res) => {
+      const query = { quantity: { $lt: 10 }, availability: "available" };
+      const result = await assetCollection.find(query).sort({ quantity: 1 }).toArray();
+      res.send(result);
+    });
+
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
