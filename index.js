@@ -166,6 +166,13 @@ async function run() {
       res.send(result);
     });
 
+    // Get limited stock assets (quantity < 10)
+    app.get('/assets/limited-stock', verifyToken, verifyHR, async (req, res) => {
+      const query = { quantity: { $lt: 10 } }
+      const result = await assetCollection.find(query).sort({ quantity: 1 }).toArray();
+      res.send(result);
+    });
+
     // Read asset item by specific id
     app.get('/assets/:id', async (req, res) => {
       const id = req.params.id;
@@ -173,6 +180,7 @@ async function run() {
       const result = await assetCollection.findOne(query);
       res.send(result);
     })
+   
 
 
     // Update asset
@@ -193,6 +201,8 @@ async function run() {
       res.send(result);
     });
 
+    
+
     // Delete a asset item from asset collection
     app.delete('/assets/:id', verifyToken, verifyHR, async (req, res) => {
       const id = req.params.id;
@@ -200,6 +210,7 @@ async function run() {
       const result = await assetCollection.deleteOne(query);
       res.send(result);
     })
+    
 
     // Employee: get assets with search & filter
     app.get('/employee/assets', verifyToken, async (req, res) => {
@@ -270,12 +281,6 @@ async function run() {
       res.send(result);
     })
 
-    // Get limited stock assets (quantity < 10)
-    app.get('/assets/limited-stock', verifyToken, verifyHR, async (req, res) => {
-      const query = { quantity: { $lt: 10 }, availability: "available" };
-      const result = await assetCollection.find(query).sort({ quantity: 1 }).toArray();
-      res.send(result);
-    });
 
 
 
