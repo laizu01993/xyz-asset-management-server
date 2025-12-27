@@ -152,6 +152,8 @@ async function run() {
         query.type = type;
       }
 
+      let cursor = assetCollection.find(query);
+
       // sort by quantity
       if (sort === 'asc') {
         cursor = cursor.sort({ quantity: 1 });
@@ -160,7 +162,7 @@ async function run() {
         cursor = cursor.sort({ quantity: -1 });
       }
 
-      const result = await assetCollection.find(query).toArray();
+      const result = await cursor.toArray();
       res.send(result);
     });
 
@@ -249,6 +251,22 @@ async function run() {
         .limit(5)
         .toArray()
 
+      res.send(result);
+    })
+
+    // HR top most requested assets using aggregate (max: 4)
+    app.get('/hr/top-requested-assets', verifyToken, verifyHR, async (req, res) => {
+      const result = await requestCollection.aggregate([
+        {
+          $group: {
+            _id: "$assetId",
+            assetName: { $first: "$assetName" },
+            requestCount: { $sum: 1 }
+          }
+        },
+        { $sort: { requestCount: -1 } },
+        { $limit: 4 }
+      ]).toArray();
       res.send(result);
     })
 
