@@ -180,7 +180,7 @@ async function run() {
       const result = await assetCollection.findOne(query);
       res.send(result);
     })
-   
+
 
 
     // Update asset
@@ -201,7 +201,7 @@ async function run() {
       res.send(result);
     });
 
-    
+
 
     // Delete a asset item from asset collection
     app.delete('/assets/:id', verifyToken, verifyHR, async (req, res) => {
@@ -210,7 +210,7 @@ async function run() {
       const result = await assetCollection.deleteOne(query);
       res.send(result);
     })
-    
+
 
     // Employee: get assets with search & filter
     app.get('/employee/assets', verifyToken, async (req, res) => {
@@ -280,6 +280,21 @@ async function run() {
       ]).toArray();
       res.send(result);
     })
+
+    // HR route: get pie chart data (Returnable vs Non-returnable items requested)
+    app.get('/hr/requests-type-stats', verifyToken, verifyHR, async (req, res) => {
+
+      const result = await requestCollection.aggregate([
+        {
+          $group: {
+            _id: "$type",
+            count: { $sum: 1 }
+          }
+        }
+      ]).toArray();
+
+      res.send(result);
+    });
 
 
 
