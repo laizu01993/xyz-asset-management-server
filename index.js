@@ -282,12 +282,29 @@ async function run() {
     })
 
     // HR route: get pie chart data (Returnable vs Non-returnable items requested)
-    app.get('/hr/requests-type-stats', verifyToken, verifyHR, async (req, res) => {
+    // app.get('/hr/requests-type-stats', verifyToken, verifyHR, async (req, res) => {
 
+    //   const result = await requestCollection.aggregate([
+    //     {
+    //       $group: {
+    //         _id: "$type",
+    //         count: { $sum: 1 }
+    //       }
+    //     }
+    //   ]).toArray();
+
+    //   res.send(result);
+    // });
+    app.get('/hr/requests-type-stats', verifyToken, verifyHR, async (req, res) => {
       const result = await requestCollection.aggregate([
         {
+          $match: {
+            status: "pending" // 🔥 IMPORTANT
+          }
+        },
+        {
           $group: {
-            _id: "$type",
+            _id: "$type",     // "returnable" | "non-returnable"
             count: { $sum: 1 }
           }
         }
@@ -296,21 +313,121 @@ async function run() {
       res.send(result);
     });
 
+
     // Asset Utilization Stats (HR Dashboard)
     app.get('/hr/asset-utilization', verifyToken, verifyHR, async (req, res) => {
       const assets = await assetCollection.find().toArray();
 
-      const result = assets.map(asset => ({
-        name: asset.name,
-        total: asset.quantity,
-        assigned: asset.assignedQuantity || 0,
-        utilizationPercent: Math.round(
-          ((asset.assignedQuantity || 0) / asset.quantity) * 100
-        )
-      }));
+      let totalAssets = 0;
+      let assignedAssets = 0;
+
+      assets.forEach(asset => {
+        totalAssets += asset.quantity;
+        assignedAssets += asset.assignedQuantity || 0;
+      });
+
+      const availableAssets = totalAssets - assignedAssets;
+
+      const utilizationPercent = totalAssets
+        ? Math.round((assignedAssets / totalAssets) * 100)
+        : 0;
+
+      res.send({
+        totalAssets,
+        assignedAssets,
+        availableAssets,
+        utilizationPercent
+      });
+    });
+
+    // HR will get all asset request by employee name or email
+    app.get('/hr/all-requests', verifyToken, verifyHR, async (req, res) => {
+      const { search = "" } = req.query;
+
+      const query = {
+        $or: [
+          { requesterName: { $regex: search, $options: "i" } },
+          { requesterEmail: { $regex: search, $options: "i" } }
+        ]
+      };
+
+      const requests = await requestCollection
+        .find(query)
+        .sort({ requestDate: -1 })
+        .toArray();
+
+      res.send(requests);
+    });
+
+    // Approve request and increase assigned assets(PATCH)
+    app.patch('/hr/approve-request/:id', verifyToken, verifyHR, async (req, res) => {
+      const requestId = req.params.id;
+
+      // 1️: Find the request
+      const request = await requestCollection.findOne({
+        _id: new ObjectId(requestId)
+      });
+
+      if (!request) {
+        return res.status(404).send({ message: "Request not found" });
+      }
+
+      // Prevent double approval
+      if (request.status !== "pending") {
+        return res.status(400).send({ message: "Request already processed" });
+      }
+
+      // 2️: Find the asset
+      const asset = await assetCollection.findOne({
+        _id: new ObjectId(request.assetId)
+      });
+
+      if (!asset) {
+        return res.status(404).send({ message: "Asset not found" });
+      }
+
+      const assignedQty = asset.assignedQuantity || 0;
+      const requestedQty = request.quantity || 1;
+
+      // 3️: Prevent over-assigning assets
+      if (assignedQty + requestedQty > asset.quantity) {
+        return res.status(400).send({
+          message: "Not enough available assets"
+        });
+      }
+
+      // 4️: Update request status
+      await requestCollection.updateOne(
+        { _id: new ObjectId(requestId) },
+        { $set: { status: "approved" } }
+      );
+
+      // 5️: Update asset assigned quantity
+      await assetCollection.updateOne(
+        { _id: new ObjectId(request.assetId) },
+        {
+          $set: {
+            assignedQuantity: assignedQty + requestedQty
+          }
+        }
+      );
+
+      res.send({ message: "Request approved and asset assigned" });
+    });
+
+    // Reject request
+    app.patch('/hr/reject-request/:id', verifyToken, verifyHR, async (req, res) => {
+      const id = req.params.id;
+
+      const result = await requestCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status: "rejected" } }
+      );
 
       res.send(result);
     });
+
+
 
 
 
