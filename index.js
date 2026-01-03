@@ -282,29 +282,12 @@ async function run() {
     })
 
     // HR route: get pie chart data (Returnable vs Non-returnable items requested)
-    // app.get('/hr/requests-type-stats', verifyToken, verifyHR, async (req, res) => {
-
-    //   const result = await requestCollection.aggregate([
-    //     {
-    //       $group: {
-    //         _id: "$type",
-    //         count: { $sum: 1 }
-    //       }
-    //     }
-    //   ]).toArray();
-
-    //   res.send(result);
-    // });
     app.get('/hr/requests-type-stats', verifyToken, verifyHR, async (req, res) => {
+
       const result = await requestCollection.aggregate([
         {
-          $match: {
-            status: "pending" // 🔥 IMPORTANT
-          }
-        },
-        {
           $group: {
-            _id: "$type",     // "returnable" | "non-returnable"
+            _id: "$type",
             count: { $sum: 1 }
           }
         }
@@ -313,41 +296,14 @@ async function run() {
       res.send(result);
     });
 
-
-    // Asset Utilization Stats (HR Dashboard)
-    app.get('/hr/asset-utilization', verifyToken, verifyHR, async (req, res) => {
-      const assets = await assetCollection.find().toArray();
-
-      let totalAssets = 0;
-      let assignedAssets = 0;
-
-      assets.forEach(asset => {
-        totalAssets += asset.quantity;
-        assignedAssets += asset.assignedQuantity || 0;
-      });
-
-      const availableAssets = totalAssets - assignedAssets;
-
-      const utilizationPercent = totalAssets
-        ? Math.round((assignedAssets / totalAssets) * 100)
-        : 0;
-
-      res.send({
-        totalAssets,
-        assignedAssets,
-        availableAssets,
-        utilizationPercent
-      });
-    });
-
     // HR will get all asset request by employee name or email
     app.get('/hr/all-requests', verifyToken, verifyHR, async (req, res) => {
       const { search = "" } = req.query;
 
       const query = {
         $or: [
-          { requesterName: { $regex: search, $options: "i" } },
-          { requesterEmail: { $regex: search, $options: "i" } }
+          { employeeName: { $regex: search, $options: "i" } },
+          { employeeEmail: { $regex: search, $options: "i" } }
         ]
       };
 
@@ -406,8 +362,8 @@ async function run() {
       await assetCollection.updateOne(
         { _id: new ObjectId(request.assetId) },
         {
-          $set: {
-            assignedQuantity: assignedQty + requestedQty
+          $inc: {
+            assignedQuantity: requestedQty
           }
         }
       );
@@ -427,7 +383,35 @@ async function run() {
       res.send(result);
     });
 
+    // HR Stats Endpoint
+    app.get('/hr/stats', verifyToken, verifyHR, async (req, res) => {
+      try {
+        // Total asset types
+        const totalAssets = await assetCollection.countDocuments();
 
+        // Total asset quantity
+        const assets = await assetCollection.find().toArray();
+        const totalQuantity = assets.reduce(
+          (sum, asset) => sum + (asset.quantity || 0),
+          0
+        );
+
+        // Total requests
+        const totalRequests = await requestCollection.countDocuments();
+
+        // Pending requests
+        const pendingRequests = await requestCollection.countDocuments({ status: "pending" });
+
+        res.send({
+          totalAssets,
+          totalQuantity,
+          totalRequests,
+          pendingRequests
+        });
+      } catch (error) {
+        res.status(500).send({ message: "Failed to fetch stats", error });
+      }
+    });
 
 
 
