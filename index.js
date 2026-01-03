@@ -298,22 +298,19 @@ async function run() {
 
     // Asset Utilization Stats (HR Dashboard)
     app.get('/hr/asset-utilization', verifyToken, verifyHR, async (req, res) => {
-      const totalAssets = await assetCollection.countDocuments();
+      const assets = await assetCollection.find().toArray();
 
-      const assignedAssets = await assetCollection.countDocuments({
-        status: "assigned"
-      });
+      const result = assets.map(asset => ({
+        name: asset.name,
+        total: asset.quantity,
+        assigned: asset.assignedQuantity || 0,
+        utilizationPercent: Math.round(
+          ((asset.assignedQuantity || 0) / asset.quantity) * 100
+        )
+      }));
 
-      const utilizationPercent = totalAssets === 0 ? 0 : Math.round((assignedAssets / totalAssets) * 100);
-
-      res.send({
-        totalAssets,
-        assignedAssets,
-        availableAssets: totalAssets - assignedAssets,
-        utilizationPercent
-      });
+      res.send(result);
     });
-
 
 
 
