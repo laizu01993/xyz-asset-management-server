@@ -75,28 +75,41 @@ async function run() {
     // Users Related APIs--->
 
     // create user
+    // app.post('/users', async (req, res) => {
+    //   const user = req.body;
+
+    //   const filter = { email: user.email };
+    //   const updateDoc = {
+    //     $set: {
+    //       name: user.name,
+    //       email: user.email,
+    //       role: user.role || "employee"
+    //     }
+    //   };
+
+    //   const options = { upsert: true };
+
+    //   const result = await userCollection.updateOne(
+    //     filter,
+    //     updateDoc,
+    //     options
+    //   );
+
+    //   res.send(result);
+    // });
     app.post('/users', async (req, res) => {
       const user = req.body;
 
-      const filter = { email: user.email };
-      const updateDoc = {
-        $set: {
-          name: user.name,
-          email: user.email,
-          role: user.role || "employee"
-        }
-      };
+      const existingUser = await userCollection.findOne({ email: user.email });
 
-      const options = { upsert: true };
+      if (existingUser) {
+        return res.send({ message: "User already exists" });
+      }
 
-      const result = await userCollection.updateOne(
-        filter,
-        updateDoc,
-        options
-      );
-
+      const result = await userCollection.insertOne(user);
       res.send(result);
     });
+
 
 
     // Get all users
@@ -384,7 +397,6 @@ async function run() {
     });
 
     // HR Stats Endpoint
-    // HR Stats Endpoint (Clean Version)
     app.get('/hr/stats', verifyToken, verifyHR, async (req, res) => {
 
       // Total asset types
@@ -414,13 +426,16 @@ async function run() {
 
     // Get all employees under HR team
     app.get('/hr/employees', verifyToken, verifyHR, async (req, res) => {
-      const query = {
-        isTeamMember: true
-      };
+      const hr = await userCollection.findOne({ email: req.decoded.email });
 
-      const employees = await userCollection.find(query).toArray();
+      const employees = await userCollection.find({
+        isTeamMember: true,
+        companyId: hr.companyId
+      }).toArray();
+
       res.send(employees);
     });
+
 
     // Remove employee from team
     app.patch('/hr/remove-employee/:id', verifyToken, verifyHR, async (req, res) => {
@@ -428,7 +443,14 @@ async function run() {
 
       const result = await userCollection.updateOne(
         { _id: new ObjectId(id) },
-        { $set: { isTeamMember: false } }
+        {
+          $set: {
+            isTeamMember: false,
+            companyId: null,
+            companyName: null,
+            companyLogo: null
+          }
+        }
       );
 
       res.send(result);
