@@ -384,34 +384,57 @@ async function run() {
     });
 
     // HR Stats Endpoint
+    // HR Stats Endpoint (Clean Version)
     app.get('/hr/stats', verifyToken, verifyHR, async (req, res) => {
-      try {
-        // Total asset types
-        const totalAssets = await assetCollection.countDocuments();
 
-        // Total asset quantity
-        const assets = await assetCollection.find().toArray();
-        const totalQuantity = assets.reduce(
-          (sum, asset) => sum + (asset.quantity || 0),
-          0
-        );
+      // Total asset types
+      const totalAssets = await assetCollection.countDocuments();
 
-        // Total requests
-        const totalRequests = await requestCollection.countDocuments();
+      // Total asset quantity
+      const assets = await assetCollection.find().toArray();
+      const totalQuantity = assets.reduce(
+        (sum, asset) => sum + (asset.quantity || 0),
+        0
+      );
 
-        // Pending requests
-        const pendingRequests = await requestCollection.countDocuments({ status: "pending" });
+      // Total requests
+      const totalRequests = await requestCollection.countDocuments();
 
-        res.send({
-          totalAssets,
-          totalQuantity,
-          totalRequests,
-          pendingRequests
-        });
-      } catch (error) {
-        res.status(500).send({ message: "Failed to fetch stats", error });
-      }
+      // Pending requests
+      const pendingRequests = await requestCollection.countDocuments({ status: "pending" });
+
+      // Send stats to frontend
+      res.send({
+        totalAssets,
+        totalQuantity,
+        totalRequests,
+        pendingRequests
+      });
     });
+
+    // Get all employees under HR team
+    app.get('/hr/employees', verifyToken, verifyHR, async (req, res) => {
+      const query = {
+        isTeamMember: true
+      };
+
+      const employees = await userCollection.find(query).toArray();
+      res.send(employees);
+    });
+
+    // Remove employee from team
+    app.patch('/hr/remove-employee/:id', verifyToken, verifyHR, async (req, res) => {
+      const id = req.params.id;
+
+      const result = await userCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { isTeamMember: false } }
+      );
+
+      res.send(result);
+    });
+
+
 
 
 
