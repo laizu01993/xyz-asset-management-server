@@ -456,7 +456,108 @@ async function run() {
       res.send(result);
     });
 
+    // HR package and team status API
+    app.get('/hr/package-status', verifyToken, verifyHR, async (req, res) => {
+      const hr = await userCollection.findOne({ email: req.decoded.email });
 
+      const teamCount = await userCollection.countDocuments({
+        isTeamMember: true,
+        companyId: hr.companyId
+      });
+
+      res.send({
+        teamLimit: hr.teamLimit,
+        teamCount,
+        canAddMore: teamCount < hr.teamLimit
+      });
+    });
+
+    // Get all free employees
+    app.get('/hr/free-employees', verifyToken, verifyHR, async (req, res) => {
+      const employees = await userCollection.find({
+        role: "employee",
+        isTeamMember: false
+      }).toArray();
+
+      res.send(employees);
+    });
+
+    // Add one employee to team
+    app.patch('/hr/add-employee/:id', verifyToken, verifyHR, async (req, res) => {
+      const employeeId = req.params.id;
+
+      const hr = await userCollection.findOne({ email: req.decoded.email });
+
+      const teamCount = await userCollection.countDocuments({
+        isTeamMember: true,
+        companyId: hr.companyId
+      });
+
+      if (teamCount >= hr.teamLimit) {
+        return res.status(403).send({ message: "Team limit reached" });
+      }
+
+      const result = await userCollection.updateOne(
+        { _id: new ObjectId(employeeId) },
+        {
+          $set: {
+            isTeamMember: true,
+            companyId: hr.companyId,
+            companyName: hr.companyName,
+            companyLogo: hr.companyLogo
+          }
+        }
+      );
+
+      res.send(result);
+    });
+
+    // Add multiple employees(One API)
+    app.patch('/hr/add-selected-employees', verifyToken, verifyHR, async (req, res) => {
+      const { employeeIds } = req.body;
+
+      const hr = await userCollection.findOne({ email: req.decoded.email });
+
+      const teamCount = await userCollection.countDocuments({
+        isTeamMember: true,
+        companyId: hr.companyId
+      });
+
+      if (teamCount + employeeIds.length > hr.teamLimit) {
+        return res.status(403).send({ message: "Team limit exceeded" });
+      }
+
+      const result = await userCollection.updateMany(
+        { _id: { $in: employeeIds.map(id => new ObjectId(id)) } },
+        {
+          $set: {
+            isTeamMember: true,
+            companyId: hr.companyId,
+            companyName: hr.companyName,
+            companyLogo: hr.companyLogo
+          }
+        }
+      );
+
+      res.send(result);
+    });
+
+    // Package upgrade
+    app.patch('/hr/upgrade-package', verifyToken, verifyHR, async (req, res) => {
+      const { newLimit } = req.body;
+
+      const result = await userCollection.updateOne(
+        { email: req.decoded.email },
+        {
+          $set: {
+            teamLimit: newLimit,
+            isPaid: true
+          }
+        }
+      );
+
+      res.send(result);
+    });
 
 
 
