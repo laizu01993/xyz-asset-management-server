@@ -75,28 +75,6 @@ async function run() {
     // Users Related APIs--->
 
     // create user
-    // app.post('/users', async (req, res) => {
-    //   const user = req.body;
-
-    //   const filter = { email: user.email };
-    //   const updateDoc = {
-    //     $set: {
-    //       name: user.name,
-    //       email: user.email,
-    //       role: user.role || "employee"
-    //     }
-    //   };
-
-    //   const options = { upsert: true };
-
-    //   const result = await userCollection.updateOne(
-    //     filter,
-    //     updateDoc,
-    //     options
-    //   );
-
-    //   res.send(result);
-    // });
     app.post('/users', async (req, res) => {
       const user = req.body;
 
@@ -113,7 +91,7 @@ async function run() {
 
 
     // Get all users
-    app.get('/users', async (req, res) => {
+    app.get('/users', verifyToken, verifyHR, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
@@ -475,12 +453,16 @@ async function run() {
     // Get all free employees
     app.get('/hr/free-employees', verifyToken, verifyHR, async (req, res) => {
       const employees = await userCollection.find({
-        role: "employee",
-        isTeamMember: false
+        $or: [
+          { companyId: { $exists: false } },
+          { companyId: null }
+        ],
+        role: "employee"
       }).toArray();
 
       res.send(employees);
     });
+
 
     // Add one employee to team
     app.patch('/hr/add-employee/:id', verifyToken, verifyHR, async (req, res) => {
@@ -556,6 +538,33 @@ async function run() {
         }
       );
 
+      res.send(result);
+    });
+
+    // Profile page GET API for HR and employees
+    app.get('/users/profile', verifyToken, async (req, res) => {
+
+      const email = req.decoded.email;
+
+      const user = await userCollection.findOne({ email });
+
+      if (!user) {
+        return res.status(404).send({ message: "User not found" });
+      }
+      res.send(user);
+    });
+
+    // Profile page UPDATE API(PATCH)
+    app.patch('/users/profile', verifyToken, async (req, res) => {
+
+      const email = req.decoded.email;
+
+      const { name, photo } = req.body;
+
+      const result = await userCollection.updateOne(
+        { email },
+        { $set: { name, photo } }
+      );
       res.send(result);
     });
 
