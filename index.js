@@ -36,8 +36,9 @@ async function run() {
 
     // JWT related API
     app.post('/jwt', async (req, res) => {
-      const user = req.body;
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+      const { email } = req.body;
+      const token = jwt.sign(
+        { email: email.toLowerCase().trim() }, process.env.ACCESS_TOKEN_SECRET, {
         expiresIn: '7d'
       })
       res.send({ token })
@@ -78,6 +79,8 @@ async function run() {
     app.post('/users', async (req, res) => {
       const user = req.body;
 
+      user.email = user.email.toLowerCase().trim();
+
       const existingUser = await userCollection.findOne({ email: user.email });
 
       if (existingUser) {
@@ -89,6 +92,21 @@ async function run() {
     });
 
 
+    // Profile page GET API for HR and employees
+    app.get('/users/profile', verifyToken, async (req, res) => {
+      const email = req.decoded.email.toLowerCase().trim();
+      const user = await userCollection.findOne({ email });
+
+      if (!user) {
+        return res.status(404).send({ message: "User not found" });
+      }
+
+      res.send(user);
+    });
+
+
+
+
 
     // Get all users
     app.get('/users', verifyToken, verifyHR, async (req, res) => {
@@ -98,9 +116,9 @@ async function run() {
 
     // get user by email
     app.get('/users/:email', async (req, res) => {
-      const email = req.params.email;
+      const email = req.params.email.toLowerCase().trim();
 
-      const query = { email: email };
+      const query = { email };
       const user = await userCollection.findOne(query);
 
       if (!user) {
@@ -177,6 +195,7 @@ async function run() {
     // Update asset
     app.patch('/assets/:id', verifyToken, verifyHR, async (req, res) => {
       const asset = req.body;
+      console.log(req.body)
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
 
@@ -541,29 +560,19 @@ async function run() {
       res.send(result);
     });
 
-    // Profile page GET API for HR and employees
-    app.get('/users/profile', verifyToken, async (req, res) => {
-
-      const email = req.decoded.email;
-
-      const user = await userCollection.findOne({ email });
-
-      if (!user) {
-        return res.status(404).send({ message: "User not found" });
-      }
-      res.send(user);
-    });
 
     // Profile page UPDATE API(PATCH)
     app.patch('/users/profile', verifyToken, async (req, res) => {
 
-      const email = req.decoded.email;
+      const email = req.decoded.email.toLowerCase().trim();
+      console.log(email)
 
-      const { name, photo } = req.body;
+      const { name } = req.body;
+      console.log(name)
 
       const result = await userCollection.updateOne(
         { email },
-        { $set: { name, photo } }
+        { $set: { name } }
       );
       res.send(result);
     });
