@@ -584,11 +584,41 @@ async function run() {
         employeeEmail: email,
         status: "pending",
       })
-      .sort({createdAt: -1})
-      .toArray();
+        .sort({ createdAt: -1 })
+        .toArray();
 
       res.send(result);
     })
+
+    // My Monthly Requests (Employee)
+    app.get('/employee/my-monthly-requests', verifyToken, async (req, res) => {
+      const email = req.decoded.email;
+
+      // get first day of current month
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      // get first day of next month
+      const startOfNextMonth = new Date(startOfMonth);
+      startOfNextMonth.setMonth(startOfMonth.getMonth() + 1);
+
+      const query = {
+        employeeEmail: email,
+        createdAt: {
+          $gte: startOfMonth,
+          $lt: startOfNextMonth
+        }
+      };
+
+      const result = await requestCollection
+        .find(query)
+        .sort({ createdAt: -1 }) // recent first
+        .toArray();
+
+      res.send(result);
+    });
+
 
 
 
