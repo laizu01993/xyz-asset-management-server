@@ -577,6 +577,19 @@ async function run() {
       res.send(result);
     });
 
+    // Employees:My Pending Requests
+    app.get("/employee/my-pending-requests", verifyToken, async (req, res) => {
+      const email = req.decoded.email;
+      const result = await requestCollection.find({
+        employeeEmail: email,
+        status: "pending",
+      })
+      .sort({createdAt: -1})
+      .toArray();
+
+      res.send(result);
+    })
+
 
 
     // Send a ping to confirm a successful connection
