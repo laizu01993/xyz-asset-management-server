@@ -619,6 +619,34 @@ async function run() {
       res.send(result);
     });
 
+    // Get team members for an employee
+    app.get('/employee/my-team', verifyToken, async (req, res) => {
+
+      const email = req.decoded.email.toLowerCase().trim();
+
+      // Get employee info
+      const employee = await userCollection.findOne({ email });
+
+      if (!employee) {
+        return res.status(404).send({ message: "Employee not found" });
+      }
+
+      // If not part of any company
+      if (!employee.companyId) {
+        return res.status(403).send({ message: "You are not affiliated with any company. Contact your HR." });
+      }
+
+      // Get all team members under the same company
+      const teamMembers = await userCollection.find({
+        companyId: employee.companyId,
+        _id: { $ne: employee._id }
+      }).toArray();
+
+      res.send(teamMembers);
+
+    });
+
+
 
 
 
