@@ -646,6 +646,88 @@ async function run() {
 
     });
 
+    // Get requested assets for logged-in employee
+    app.get('/employee/my-requests', verifyToken, async (req, res) => {
+      const email = req.decoded.email.toLowerCase().trim();
+
+      const { search = "", status, type } = req.query;
+
+      // base query (always employee-specific)
+      const query = {
+        employeeEmail: email,
+      };
+
+      // search by asset name (server-side)
+      if (search) {
+        query.assetName = {
+          $regex: search,
+          $options: "i"
+        };
+      }
+
+      // filter by request status(pending / approved / returned)
+      if (status) {
+        query.status = status;
+      }
+
+      // filter by asset type(returnable / non-returnable)
+      if (type) {
+        query.type = type;
+      }
+
+      const requests = await requestCollection
+        .find(query)
+        .sort({ createdAt: -1 })
+        .toArray();
+
+      res.send(requests);
+    });
+
+    // Cancel pending request
+    app.patch('/employee/cancel-request/:id', verifyToken, async (req, res) => {
+      const id = new ObjectId(req.params.id);
+
+      const result = await requestCollection.updateOne(
+        { _id: id, status: "pending" },
+        { $set: { status: "cancelled" } }
+      );
+
+      res.send(result);
+    });
+
+
+    // Returned asset(only approved and returnable)
+    app.patch('/employee/return-asset/:id', verifyToken, async (req, res) => {
+      const { id } = req.params;
+
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ message: "Invalid request ID" });
+      }
+
+      const requestId = new ObjectId(id);
+
+      const request = await requestCollection.findOne({ _id: requestId });
+
+      if (!request || request.status !== "approved" || request.type !== "returnable") {
+        return res.status(400).send({ message: "Invalid return request" });
+      }
+
+      await requestCollection.updateOne(
+        { _id: requestId },
+        { $set: { status: "returned", returnedAt: new Date() } }
+      );
+
+      const assetId = new ObjectId(request.assetId);
+
+      await assetCollection.updateOne(
+        { _id: assetId },
+        { $inc: { quantity: 1 } }
+      );
+
+      res.send({ message: "Asset returned successfully" });
+    });
+
+
 
 
 
