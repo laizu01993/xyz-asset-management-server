@@ -3,6 +3,8 @@ const app = express();
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
+
 const port = process.env.PORT || 5000;
 
 
@@ -32,6 +34,7 @@ async function run() {
     const userCollection = client.db("xyzDB").collection("users");
     const assetCollection = client.db("xyzDB").collection("assets");
     const requestCollection = client.db("xyzDB").collection("requests");
+    const paymentsCollection = client.db('xyzDB').collection('payments');
 
 
     // JWT related API
@@ -365,7 +368,12 @@ async function run() {
       // 4️: Update request status
       await requestCollection.updateOne(
         { _id: new ObjectId(requestId) },
-        { $set: { status: "approved" } }
+        {
+          $set: {
+            status: "approved",
+            approvedAt: new Date()
+          }
+        }
       );
 
       // 5️: Update asset assigned quantity
@@ -552,7 +560,8 @@ async function run() {
         {
           $set: {
             teamLimit: newLimit,
-            isPaid: true
+            isPaid: true,
+            paidAt: new Date()
           }
         }
       );
@@ -728,7 +737,67 @@ async function run() {
     });
 
 
+    // POST /hr/create-payment-intent
+    app.post("/hr/create-payment-intent", verifyToken, verifyHR, async (req, res) => {
 
+      const { price } = req.body;
+      if (!price || price <= 0) {
+        return res.status(400).send({ message: "Invalid price" });
+      }
+
+      // convert to cents for Stripe
+      const amount = Math.round(price * 100);
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+
+    // GET /hr/payments/:email
+    app.get("/hr/payments/:email", verifyToken, verifyHR, async (req, res) => {
+
+      const email = req.params.email;
+
+      // make sure the requested email matches the logged-in user
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "Forbidden access" });
+      }
+
+      const payments = await paymentsCollection.find({ email }).toArray();
+
+      res.send(payments);
+    });
+
+
+    // POST /hr/payments
+    // app.post("/hr/payments", verifyToken, verifyHR, async (req, res) => {
+
+    //   const { amount, teamLimit, from } = req.body;
+
+    //   if (!amount || !teamLimit) {
+    //     return res.status(400).send({ message: "Missing payment info" });
+    //   }
+
+    //   const paymentDoc = {
+    //     email: req.decoded.email,
+    //     amount,
+    //     teamLimit,
+    //     from,
+    //     status: "succeeded",
+    //     createdAt: new Date(),
+    //   };
+
+    //   const result = await paymentsCollection.insertOne(paymentDoc);
+
+    //   res.send({ paymentResult: result });
+    // });
 
 
 
