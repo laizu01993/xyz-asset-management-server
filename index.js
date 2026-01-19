@@ -717,7 +717,7 @@ async function run() {
 
       const request = await requestCollection.findOne({ _id: requestId });
 
-      if (!request || request.status !== "approved" || request.type !== "returnable") {
+      if (!request || request.status !== "approved" || request.type.toLowerCase() !== "returnable") {
         return res.status(400).send({ message: "Invalid return request" });
       }
 
