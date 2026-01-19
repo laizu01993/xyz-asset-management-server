@@ -143,7 +143,7 @@ async function run() {
     // Get all assets with search, filter and sort (HR only)
     app.get('/assets', verifyToken, verifyHR, async (req, res) => {
 
-      const { search, status, type, sort } = req.query;
+      const { search, status, type, sort, page = 1, limit = 10 } = req.query;
 
       let query = {};
 
@@ -174,8 +174,17 @@ async function run() {
         cursor = cursor.sort({ quantity: -1 });
       }
 
-      const result = await cursor.toArray();
-      res.send(result);
+      const total = await assetCollection.countDocuments(query);
+
+      const assets = await cursor
+        .skip((page - 1) * limit)
+        .limit(parseInt(limit))
+        .toArray();
+
+      res.send({
+        total,
+        assets
+      });
     });
 
     // Get limited stock assets (quantity < 10)
