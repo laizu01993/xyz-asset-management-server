@@ -68,7 +68,6 @@ https://asset-management-api-tf4m.onrender.com
 ---
 
 ## 🛠️ Tech Stack
-
 - Node.js
 - Express.js
 - MongoDB Atlas
@@ -83,6 +82,7 @@ https://asset-management-api-tf4m.onrender.com
 ## 🌍 CORS Configuration
 
 Allowed origins:
+
 ```js
 [
   "http://localhost:5173",
@@ -90,6 +90,7 @@ Allowed origins:
   "https://xyz-company-61324.firebaseapp.com",
   "https://xyz-asset-management.vercel.app"
 ]
+
 
 🔐 Environment Variables
 
