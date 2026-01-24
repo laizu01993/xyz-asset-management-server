@@ -9,15 +9,30 @@ const port = process.env.PORT || 5000;
 
 
 // middleware
-app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'https://xyz-company-61324.web.app/',
-    'https://xyz-company-61324.firebaseapp.com/',
-    'https://xyz-asset-management.vercel.app/'
-  ],
-  credentials: true
-}));
+// app.use(cors({
+//   origin: [
+//     'http://localhost:5173',
+//     'https://xyz-company-61324.web.app',
+//     'https://xyz-company-61324.firebaseapp.com',
+//     'https://xyz-asset-management.vercel.app'
+//   ],
+//   credentials: true
+// }));
+app.use(
+  cors({
+    origin: [
+      'http://localhost:5173',
+      'https://xyz-company-61324.web.app',
+      'https://xyz-company-61324.firebaseapp.com',
+      'https://xyz-asset-management.vercel.app'
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
+app.options('*', cors());
+
 app.use(express.json());
 
 
