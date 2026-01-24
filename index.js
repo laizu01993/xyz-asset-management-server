@@ -27,12 +27,9 @@ app.use(
       'https://xyz-asset-management.vercel.app'
     ],
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
   })
 );
-app.options('*', cors());
-
 app.use(express.json());
 
 
