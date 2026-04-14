@@ -477,7 +477,7 @@ async function run() {
 
     // GET notifications
     app.get('/notifications', verifyToken, async (req, res) => {
-      const email = req.decoded.email;
+      const email = req.decoded.email.toLowerCase().trim() ;
 
       const result = await notificationCollection
         .find({ receiverEmail: email })
@@ -489,7 +489,7 @@ async function run() {
 
     // GET unread count
     app.get('/notifications/unread-count', verifyToken, async (req, res) => {
-      const email = req.decoded.email;
+      const email = req.decoded.email.toLowerCase().trim();
 
       const count = await notificationCollection.countDocuments({
         receiverEmail: email,
