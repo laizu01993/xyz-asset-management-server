@@ -55,6 +55,7 @@ async function run() {
     const assetCollection = client.db("xyzDB").collection("assets");
     const requestCollection = client.db("xyzDB").collection("requests");
     const paymentsCollection = client.db('xyzDB').collection('payments');
+    const notificationCollection = client.db("xyzDB").collection("notification");
 
 
     // JWT related API
@@ -279,13 +280,33 @@ async function run() {
 
     // Create asset request (Employee)
     app.post('/requests', verifyToken, async (req, res) => {
+
       const request = req.body;
+
+
+      // find HR
+      const hr = await userCollection.findOne({
+        companyId: request.companyId,
+        role: "hr"
+      });
+
+      if (hr) {
+        await notificationCollection.insertOne({
+          receiverEmail: hr.email,
+          message: `${request.employeeName} requested "${request.assetName}"`,
+          type: "info",
+          isRead: false,
+          createdAt: new Date()
+        });
+      }
+
       const newRequest = {
         assetId: request.assetId,
         assetName: request.assetName,
         type: request.type,
         employeeName: request.employeeName,
         employeeEmail: request.employeeEmail,
+        companyId: request.companyId,
         note: request.note || "",
         status: "pending",
         createdAt: new Date()
@@ -415,6 +436,15 @@ async function run() {
         }
       );
 
+      // 6: Request notification from hr to employee
+      await notificationCollection.insertOne({
+        receiverEmail: request.employeeEmail,
+        message: `Your request for "${request.assetName}" has been approved`,
+        type: "success",
+        isRead: false,
+        createdAt: new Date()
+      })
+
       res.send({ message: "Request approved and asset assigned" });
     });
 
@@ -422,9 +452,60 @@ async function run() {
     app.patch('/hr/reject-request/:id', verifyToken, verifyHR, async (req, res) => {
       const id = req.params.id;
 
+      const request = await requestCollection.findOne({
+        _id: new ObjectId(id)
+      });
+
       const result = await requestCollection.updateOne(
         { _id: new ObjectId(id) },
         { $set: { status: "rejected" } }
+      );
+
+
+      // Add notification for rejecting request
+
+      await notificationCollection.insertOne({
+        receiverEmail: request.employeeEmail,
+        message: `Your request for "${request.assetName}" was rejected`,
+        type: "error",
+        isRead: false,
+        createdAt: new Date()
+      });
+
+      res.send(result);
+    });
+
+    // GET notifications
+    app.get('/notifications', verifyToken, async (req, res) => {
+      const email = req.decoded.email;
+
+      const result = await notificationCollection
+        .find({ receiverEmail: email })
+        .sort({ createdAt: -1 })
+        .toArray();
+
+      res.send(result);
+    });
+
+    // GET unread count
+    app.get('/notifications/unread-count', verifyToken, async (req, res) => {
+      const email = req.decoded.email;
+
+      const count = await notificationCollection.countDocuments({
+        receiverEmail: email,
+        isRead: false
+      });
+
+      res.send({ count });
+    });
+
+    // after read notification updated
+    app.patch('/notifications/read/:id', verifyToken, async (req, res) => {
+      const id = req.params.id;
+
+      const result = await notificationCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { isRead: true } }
       );
 
       res.send(result);
