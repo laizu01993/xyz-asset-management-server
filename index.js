@@ -550,6 +550,17 @@ async function run() {
       res.send(result);
     });
 
+    app.patch('/notifications/mark-all-read', verifyToken, async (req, res) => {
+      const email = req.decoded.email.toLowerCase().trim();
+
+      const result = await notificationCollection.updateMany(
+        { receiverEmail: email, isRead: false },
+        { $set: { isRead: true } }
+      );
+
+      res.send(result);
+    });
+
     // HR Stats Endpoint
     app.get('/hr/stats', verifyToken, verifyHR, async (req, res) => {
 
