@@ -279,20 +279,58 @@ async function run() {
 
 
     // Create asset request (Employee)
+    // app.post('/requests', verifyToken, async (req, res) => {
+
+    //   const request = req.body;
+
+
+    //   // find HR
+    //   const hr = await userCollection.findOne({
+    //     companyId: request.companyId,
+    //     role: "hr"
+    //   });
+
+    //   if (hr) {
+    //     await notificationCollection.insertOne({
+    //       receiverEmail: hr.email,
+    //       message: `${request.employeeName} requested "${request.assetName}"`,
+    //       type: "info",
+    //       isRead: false,
+    //       createdAt: new Date()
+    //     });
+    //   }
+
+    //   const newRequest = {
+    //     assetId: request.assetId,
+    //     assetName: request.assetName,
+    //     type: request.type,
+    //     employeeName: request.employeeName,
+    //     employeeEmail: request.employeeEmail,
+    //     companyId: request.companyId,
+    //     note: request.note || "",
+    //     status: "pending",
+    //     createdAt: new Date()
+    //   };
+    //   const result = await requestCollection.insertOne(newRequest);
+    //   res.send(result);
+    // })
+
     app.post('/requests', verifyToken, async (req, res) => {
 
       const request = req.body;
 
+      const employee = await userCollection.findOne({
+        email: request.employeeEmail
+      });
 
-      // find HR
       const hr = await userCollection.findOne({
-        companyId: request.companyId,
+        companyId: employee?.companyId,
         role: "hr"
       });
 
       if (hr) {
         await notificationCollection.insertOne({
-          receiverEmail: hr.email,
+          receiverEmail: hr.email.toLowerCase().trim(),
           message: `${request.employeeName} requested "${request.assetName}"`,
           type: "info",
           isRead: false,
@@ -306,14 +344,15 @@ async function run() {
         type: request.type,
         employeeName: request.employeeName,
         employeeEmail: request.employeeEmail,
-        companyId: request.companyId,
+        companyId: employee?.companyId,
         note: request.note || "",
         status: "pending",
         createdAt: new Date()
       };
+
       const result = await requestCollection.insertOne(newRequest);
       res.send(result);
-    })
+    });
 
     // GET /hr/pending-requests
     app.get('/hr/pending-requests', verifyToken, verifyHR, async (req, res) => {
@@ -477,7 +516,7 @@ async function run() {
 
     // GET notifications
     app.get('/notifications', verifyToken, async (req, res) => {
-      const email = req.decoded.email.toLowerCase().trim() ;
+      const email = req.decoded.email.toLowerCase().trim();
 
       const result = await notificationCollection
         .find({ receiverEmail: email })
