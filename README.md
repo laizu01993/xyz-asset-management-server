@@ -67,6 +67,31 @@ https://asset-management-api-tf4m.onrender.com
 
 ---
 
+### ⚡ Real-Time Notifications (Socket.io)
+- Instant notification delivery using Socket.io
+- Users join private rooms using their email
+- HR actions (asset approve/reject, team updates) trigger real-time events
+- Live update of notification list & unread count on frontend
+- Eliminates need for manual refresh
+
+---
+
+## 🔌 Real-Time Architecture
+- Socket.io server integrated with Express
+- Each user joins a unique room using email
+- Backend emits `new-notification` events
+- Frontend listens and updates UI via React Query
+
+---
+
+## 📡 Real-Time Event Example
+
+1. Employee requests asset
+2. HR approves request
+3. Server emits `new-notification` event
+4. Target user receives notification instantly
+5. Frontend updates notification list automatically
+
 ## 🛠️ Tech Stack
 - Node.js
 - Express.js
@@ -75,6 +100,7 @@ https://asset-management-api-tf4m.onrender.com
 - Stripe API
 - CORS
 - dotenv
+- Socket.io
 - Render (Deployment)
 
 ---
