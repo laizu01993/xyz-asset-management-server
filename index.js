@@ -7,17 +7,39 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 
 const port = process.env.PORT || 5000;
 
+const http = require("http");
+const { Server } = require("socket.io");
+
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: "*"
+  }
+});
+
+const onlineUsers = {};
+
+io.on("connection", (socket) => {
+  console.log("User connected:", socket.id);
+
+  socket.on("join", (email) => {
+    onlineUsers[email] = socket.id;
+    console.log("User joined:", email);
+  });
+
+  socket.on("disconnect", () => {
+    for (const email in onlineUsers) {
+      if (onlineUsers[email] === socket.id) {
+        delete onlineUsers[email];
+      }
+    }
+    console.log("User disconnected");
+  });
+});
+
 
 // middleware
-// app.use(cors({
-//   origin: [
-//     'http://localhost:5173',
-//     'https://xyz-company-61324.web.app',
-//     'https://xyz-company-61324.firebaseapp.com',
-//     'https://xyz-asset-management.vercel.app'
-//   ],
-//   credentials: true
-// }));
 app.use(
   cors({
     origin: [
@@ -277,44 +299,6 @@ async function run() {
       res.send(result);
     });
 
-
-    // Create asset request (Employee)
-    // app.post('/requests', verifyToken, async (req, res) => {
-
-    //   const request = req.body;
-
-
-    //   // find HR
-    //   const hr = await userCollection.findOne({
-    //     companyId: request.companyId,
-    //     role: "hr"
-    //   });
-
-    //   if (hr) {
-    //     await notificationCollection.insertOne({
-    //       receiverEmail: hr.email,
-    //       message: `${request.employeeName} requested "${request.assetName}"`,
-    //       type: "info",
-    //       isRead: false,
-    //       createdAt: new Date()
-    //     });
-    //   }
-
-    //   const newRequest = {
-    //     assetId: request.assetId,
-    //     assetName: request.assetName,
-    //     type: request.type,
-    //     employeeName: request.employeeName,
-    //     employeeEmail: request.employeeEmail,
-    //     companyId: request.companyId,
-    //     note: request.note || "",
-    //     status: "pending",
-    //     createdAt: new Date()
-    //   };
-    //   const result = await requestCollection.insertOne(newRequest);
-    //   res.send(result);
-    // })
-
     app.post('/requests', verifyToken, async (req, res) => {
 
       const request = req.body;
@@ -336,6 +320,13 @@ async function run() {
           isRead: false,
           createdAt: new Date()
         });
+        const receiverSocket = onlineUsers[hr.email.toLowerCase().trim()];
+
+        if (receiverSocket) {
+          io.to(receiverSocket).emit("new-notification", {
+            message: `${request.employeeName} requested "${request.assetName}"`
+          });
+        }
       }
 
       const newRequest = {
@@ -484,6 +475,14 @@ async function run() {
         createdAt: new Date()
       })
 
+      const receiverSocket = onlineUsers[request.employeeEmail];
+
+      if (receiverSocket) {
+        io.to(receiverSocket).emit("new-notification", {
+          message: `Your request for "${request.assetName}" has been approved`
+        });
+      }
+
       res.send({ message: "Request approved and asset assigned" });
     });
 
@@ -510,6 +509,14 @@ async function run() {
         isRead: false,
         createdAt: new Date()
       });
+
+      const receiverSocket = onlineUsers[request.employeeEmail];
+
+      if (receiverSocket) {
+        io.to(receiverSocket).emit("new-notification", {
+          message: `Your request for "${request.assetName}" was rejected`
+        });
+      }
 
       res.send(result);
     });
@@ -936,30 +943,6 @@ async function run() {
     });
 
 
-    // POST /hr/payments
-    // app.post("/hr/payments", verifyToken, verifyHR, async (req, res) => {
-
-    //   const { amount, teamLimit, from } = req.body;
-
-    //   if (!amount || !teamLimit) {
-    //     return res.status(400).send({ message: "Missing payment info" });
-    //   }
-
-    //   const paymentDoc = {
-    //     email: req.decoded.email,
-    //     amount,
-    //     teamLimit,
-    //     from,
-    //     status: "succeeded",
-    //     createdAt: new Date(),
-    //   };
-
-    //   const result = await paymentsCollection.insertOne(paymentDoc);
-
-    //   res.send({ paymentResult: result });
-    // });
-
-
 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
@@ -977,6 +960,6 @@ app.get('/', (req, res) => {
   res.send('HR Manager is sitting')
 })
 
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`HR Manager is sitting on port ${port}`)
 })
