@@ -14,26 +14,27 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "*"
+    origin: [
+      "http://localhost:5173",
+      "https://xyz-company-61324.web.app",
+      "https://xyz-company-61324.firebaseapp.com",
+      "https://xyz-asset-management.vercel.app"
+    ],
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
-const onlineUsers = {};
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
   socket.on("join", (email) => {
-    onlineUsers[email] = socket.id;
+    socket.join(email);
     console.log("User joined:", email);
   });
 
   socket.on("disconnect", () => {
-    for (const email in onlineUsers) {
-      if (onlineUsers[email] === socket.id) {
-        delete onlineUsers[email];
-      }
-    }
     console.log("User disconnected");
   });
 });
@@ -320,14 +321,12 @@ async function run() {
           isRead: false,
           createdAt: new Date()
         });
-        const receiverSocket = onlineUsers[hr.email.toLowerCase().trim()];
 
-        if (receiverSocket) {
-          io.to(receiverSocket).emit("new-notification", {
-            message: `${request.employeeName} requested "${request.assetName}"`
-          });
-        }
+        io.to(hr.email.toLowerCase().trim()).emit("new-notification", {
+          message: `${request.employeeName} requested "${request.assetName}"`
+        });
       }
+
 
       const newRequest = {
         assetId: request.assetId,
@@ -475,13 +474,10 @@ async function run() {
         createdAt: new Date()
       })
 
-      const receiverSocket = onlineUsers[request.employeeEmail];
+      io.to(request.employeeEmail).emit("new-notification", {
+        message: `Your request for "${request.assetName}" has been approved`
+      })
 
-      if (receiverSocket) {
-        io.to(receiverSocket).emit("new-notification", {
-          message: `Your request for "${request.assetName}" has been approved`
-        });
-      }
 
       res.send({ message: "Request approved and asset assigned" });
     });
@@ -510,13 +506,10 @@ async function run() {
         createdAt: new Date()
       });
 
-      const receiverSocket = onlineUsers[request.employeeEmail];
+      io.to(request.employeeEmail).emit("new-notification", {
+        message: `Your request for "${request.assetName}" was rejected`
+      });
 
-      if (receiverSocket) {
-        io.to(receiverSocket).emit("new-notification", {
-          message: `Your request for "${request.assetName}" was rejected`
-        });
-      }
 
       res.send(result);
     });
