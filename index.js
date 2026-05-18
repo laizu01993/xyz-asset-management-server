@@ -323,7 +323,8 @@ async function run() {
         });
 
         io.to(hr.email.toLowerCase().trim()).emit("new-notification", {
-          message: `${request.employeeName} requested "${request.assetName}"`
+          message: `${request.employeeName} requested "${request.assetName}"`,
+          type: "info"
         });
       }
 
@@ -475,7 +476,8 @@ async function run() {
       })
 
       io.to(request.employeeEmail).emit("new-notification", {
-        message: `Your request for "${request.assetName}" has been approved`
+        message: `Your request for "${request.assetName}" has been approved`,
+        type: "success"
       })
 
 
@@ -507,7 +509,8 @@ async function run() {
       });
 
       io.to(request.employeeEmail).emit("new-notification", {
-        message: `Your request for "${request.assetName}" was rejected`
+        message: `Your request for "${request.assetName}" was rejected`,
+        type: "error"
       });
 
 
